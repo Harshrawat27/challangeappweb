@@ -85,11 +85,17 @@ export const scanMeal = action({
     }
 
     const data = await response.json() as {
-      candidates?: Array<{ content: { parts: Array<{ text: string }> } }>;
+      candidates?: Array<{ content: { parts: Array<{ text?: string }> } }>;
     };
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
 
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    // 2.5 Flash is a thinking model — it emits reasoning in earlier parts and
+    // the actual answer in a later part. Join all parts to catch it regardless.
+    const parts = data.candidates?.[0]?.content?.parts ?? [];
+    const text = parts.map(p => p.text ?? '').join('');
+
+    // Strip markdown code fences (model sometimes wraps JSON in ```json ... ```)
+    const stripped = text.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '');
+    const jsonMatch = stripped.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('Could not parse meal data from AI response');
 
     const meal = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
