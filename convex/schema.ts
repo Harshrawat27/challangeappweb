@@ -1,5 +1,91 @@
-import { defineSchema } from 'convex/server';
+import { defineSchema, defineTable } from 'convex/server';
+import { v } from 'convex/values';
 
-// App-domain tables go here. Auth tables live in betterAuth/schema.ts
-// and are registered separately by the Better Auth component.
-export default defineSchema({});
+export default defineSchema({
+  user_preferences: defineTable({
+    userId: v.string(),                  // Better Auth subject
+
+    // Identity
+    name: v.string(),                    // captured in onboarding S2
+
+    // Challenge selection
+    challenge: v.string(),               // ChallengeId: '75-hard' | '75-medium' | '75-soft' | 'monk-mode' | 'custom'
+    challengeLength: v.number(),         // total days (7..180)
+    challengeStartDate: v.string(),      // YYYY-MM-DD (user's local date at onboarding completion)
+    customHabits: v.array(v.string()),   // free-form habits the user added on S5
+
+    // Psychographics
+    whyMotivations: v.array(v.string()), // S6 selections
+    pastFailures: v.array(v.string()),   // S7 selections
+    seriousness: v.number(),             // S8: 1-10
+
+    // Social + reminders
+    partnerInvited: v.boolean(),         // S12
+    reminderTimes: v.object({            // S13
+      morning: v.string(),               // HH:MM
+      afternoon: v.string(),
+      evening: v.string(),
+    }),
+
+    // Meta
+    onboardingCompletedAt: v.string(),   // ISO timestamp
+  }).index('by_user', ['userId']),
+
+  // One row per (user, date). Records which tasks were checked off that day
+  // and when. Past rows are immutable from a UI standpoint — only today's row
+  // is ever mutated.
+  daily_logs: defineTable({
+    userId: v.string(),                                   // Better Auth subject
+    date: v.string(),                                     // YYYY-MM-DD (user-local)
+    challengeDay: v.number(),                             // day 1..N of the user's challenge
+    allTaskIds: v.array(v.string()),                      // snapshot of the day's task list
+    completions: v.record(v.string(), v.string()),        // taskId → ISO timestamp of latest check
+  })
+    .index('by_user_date', ['userId', 'date'])
+    .index('by_user', ['userId']),
+
+  // Username claim — one row per user. Claimed once during onboarding.
+  // Lookup key is lowercased; original casing kept for display.
+  usernames: defineTable({
+    userId: v.string(),
+    username: v.string(),       // lowercase, the lookup key
+    displayName: v.string(),    // case-preserved (what the user typed)
+    setAt: v.string(),          // ISO timestamp
+  })
+    .index('by_user', ['userId'])
+    .index('by_username', ['username']),
+
+  // Accepted friendship — denormalized: when A & B become friends, TWO rows
+  // are written, (A, B) and (B, A). Makes "list my friends" a single lookup.
+  friendships: defineTable({
+    userId: v.string(),
+    friendId: v.string(),
+    createdAt: v.string(),
+  })
+    .index('by_user', ['userId'])
+    .index('by_pair', ['userId', 'friendId']),
+
+  // One row per meal scanned by the user on a given day.
+  meals: defineTable({
+    userId: v.string(),
+    date: v.string(),           // YYYY-MM-DD (user-local)
+    name: v.string(),
+    calories: v.number(),
+    protein: v.number(),
+    carbs: v.number(),
+    fat: v.number(),
+    scannedAt: v.string(),      // ISO timestamp
+  })
+    .index('by_user_date', ['userId', 'date'])
+    .index('by_user', ['userId']),
+
+  // Pending requests. Removed on accept/decline.
+  friend_requests: defineTable({
+    fromUserId: v.string(),
+    toUserId: v.string(),
+    createdAt: v.string(),
+  })
+    .index('by_to', ['toUserId'])
+    .index('by_from', ['fromUserId'])
+    .index('by_pair', ['fromUserId', 'toUserId']),
+});

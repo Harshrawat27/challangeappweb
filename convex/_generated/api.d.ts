@@ -8,7 +8,12 @@
  * @module
  */
 
+import type * as dailyLogs from "../dailyLogs.js";
+import type * as friends from "../friends.js";
 import type * as http from "../http.js";
+import type * as meals from "../meals.js";
+import type * as userPreferences from "../userPreferences.js";
+import type * as usernames from "../usernames.js";
 
 import type {
   ApiFromModules,
@@ -17,7 +22,12 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  dailyLogs: typeof dailyLogs;
+  friends: typeof friends;
   http: typeof http;
+  meals: typeof meals;
+  userPreferences: typeof userPreferences;
+  usernames: typeof usernames;
 }>;
 
 /**
