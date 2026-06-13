@@ -79,6 +79,15 @@ export default defineSchema({
     .index('by_user_date', ['userId', 'date'])
     .index('by_user', ['userId']),
 
+  // One note per user per day. Written from the day-journal modal.
+  day_notes: defineTable({
+    userId: v.string(),
+    date: v.string(),           // YYYY-MM-DD (user-local)
+    note: v.string(),
+    updatedAt: v.string(),      // ISO timestamp
+  })
+    .index('by_user_date', ['userId', 'date']),
+
   // Pending requests. Removed on accept/decline.
   friend_requests: defineTable({
     fromUserId: v.string(),

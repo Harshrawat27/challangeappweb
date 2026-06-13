@@ -52,6 +52,8 @@ export const scanMeal = action({
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) throw new Error('GEMINI_API_KEY not configured');
 
+    console.log('[scanMeal] calling Gemini, base64 length:', imageBase64.length);
+
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       {
@@ -73,30 +75,46 @@ export const scanMeal = action({
           }],
           generationConfig: {
             temperature: 0.1,
-            maxOutputTokens: 256,
+            maxOutputTokens: 1024,
+            thinkingConfig: {
+              thinkingBudget: 0,
+            },
           },
         }),
       },
     );
 
+    console.log('[scanMeal] response status:', response.status);
+
     if (!response.ok) {
       const err = await response.text();
+      console.log('[scanMeal] error body:', err);
       throw new Error(`Gemini API error ${response.status}: ${err}`);
     }
 
     const data = await response.json() as {
       candidates?: Array<{ content: { parts: Array<{ text?: string }> } }>;
+      promptFeedback?: { blockReason?: string };
     };
+
+    console.log('[scanMeal] candidates count:', data.candidates?.length);
+    console.log('[scanMeal] promptFeedback:', JSON.stringify(data.promptFeedback));
+
+    if (!data.candidates?.length) {
+      throw new Error(`No candidates returned. promptFeedback: ${JSON.stringify(data.promptFeedback)}`);
+    }
 
     // 2.5 Flash is a thinking model — it emits reasoning in earlier parts and
     // the actual answer in a later part. Join all parts to catch it regardless.
-    const parts = data.candidates?.[0]?.content?.parts ?? [];
+    const parts = data.candidates[0].content?.parts ?? [];
+    console.log('[scanMeal] parts count:', parts.length);
     const text = parts.map(p => p.text ?? '').join('');
+    console.log('[scanMeal] joined text (first 300):', text.slice(0, 300));
 
     // Strip markdown code fences (model sometimes wraps JSON in ```json ... ```)
     const stripped = text.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '');
     const jsonMatch = stripped.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('Could not parse meal data from AI response');
+    if (!jsonMatch) throw new Error(`Could not parse meal data. text was: ${text.slice(0, 200)}`);
 
     const meal = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
     return {

@@ -156,9 +156,13 @@ async function fetchFriendCard(
     name: prefs?.name ?? null,
     challenge: prefs?.challenge ?? null,
     challengeLength: prefs?.challengeLength ?? null,
+    challengeStartDate: prefs?.challengeStartDate ?? null,
+    customHabits: prefs?.customHabits ?? [],
     currentDay,
     todayCompleted: todayLog ? Object.keys(todayLog.completions).length : 0,
     todayExpected: todayLog?.allTaskIds.length ?? 0,
+    todayTaskIds: todayLog?.allTaskIds ?? [],
+    todayCompletions: todayLog ? Object.keys(todayLog.completions) : [],
   };
 }
 
@@ -179,6 +183,47 @@ export const getMyFriends = query({
       cards.push(await fetchFriendCard(ctx, row.friendId, today));
     }
     return cards;
+  },
+});
+
+export const getFriendDetail = query({
+  args: { friendUserId: v.string(), today: v.string() },
+  handler: async (ctx, { friendUserId, today }) => {
+    const me = await requireAuth(ctx);
+
+    const friendship = await ctx.db
+      .query('friendships')
+      .withIndex('by_pair', (q) => q.eq('userId', me).eq('friendId', friendUserId))
+      .first();
+    if (!friendship) return null;
+
+    const prefs = await ctx.db
+      .query('user_preferences')
+      .withIndex('by_user', (q) => q.eq('userId', friendUserId))
+      .first();
+    const username = await ctx.db
+      .query('usernames')
+      .withIndex('by_user', (q) => q.eq('userId', friendUserId))
+      .first();
+
+    const from = prefs?.challengeStartDate ?? today;
+    const logs = await ctx.db
+      .query('daily_logs')
+      .withIndex('by_user_date', (q) =>
+        q.eq('userId', friendUserId).gte('date', from),
+      )
+      .filter((q) => q.lte(q.field('date'), today))
+      .collect();
+
+    return {
+      username: username?.username ?? null,
+      displayName: username?.displayName ?? prefs?.name ?? 'Friend',
+      challenge: prefs?.challenge ?? null,
+      challengeLength: prefs?.challengeLength ?? null,
+      challengeStartDate: prefs?.challengeStartDate ?? null,
+      customHabits: prefs?.customHabits ?? [],
+      logs,
+    };
   },
 });
 

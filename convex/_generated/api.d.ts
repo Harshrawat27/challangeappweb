@@ -12,6 +12,7 @@ import type * as dailyLogs from "../dailyLogs.js";
 import type * as friends from "../friends.js";
 import type * as http from "../http.js";
 import type * as meals from "../meals.js";
+import type * as notes from "../notes.js";
 import type * as userPreferences from "../userPreferences.js";
 import type * as usernames from "../usernames.js";
 
@@ -26,6 +27,7 @@ declare const fullApi: ApiFromModules<{
   friends: typeof friends;
   http: typeof http;
   meals: typeof meals;
+  notes: typeof notes;
   userPreferences: typeof userPreferences;
   usernames: typeof usernames;
 }>;
