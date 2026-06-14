@@ -24,6 +24,8 @@ export const save = mutation({
     seriousness: v.number(),
     partnerInvited: v.boolean(),
     reminderTimes,
+    weightKg: v.optional(v.number()),
+    waterGoalMl: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();

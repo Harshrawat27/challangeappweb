@@ -15,6 +15,7 @@ import type * as meals from "../meals.js";
 import type * as notes from "../notes.js";
 import type * as userPreferences from "../userPreferences.js";
 import type * as usernames from "../usernames.js";
+import type * as water from "../water.js";
 
 import type {
   ApiFromModules,
@@ -30,6 +31,7 @@ declare const fullApi: ApiFromModules<{
   notes: typeof notes;
   userPreferences: typeof userPreferences;
   usernames: typeof usernames;
+  water: typeof water;
 }>;
 
 /**

@@ -27,6 +27,10 @@ export default defineSchema({
       evening: v.string(),
     }),
 
+    // Water tracking
+    weightKg: v.optional(v.number()),    // used to pre-calculate water goal
+    waterGoalMl: v.optional(v.number()), // daily water target in ml (default 2500)
+
     // Meta
     onboardingCompletedAt: v.string(),   // ISO timestamp
   }).index('by_user', ['userId']),
@@ -87,6 +91,16 @@ export default defineSchema({
     updatedAt: v.string(),      // ISO timestamp
   })
     .index('by_user_date', ['userId', 'date']),
+
+  // One entry per drink logged by the user on a given day.
+  water_logs: defineTable({
+    userId: v.string(),
+    date: v.string(),       // YYYY-MM-DD (user-local)
+    amountMl: v.number(),
+    loggedAt: v.string(),   // ISO timestamp
+  })
+    .index('by_user_date', ['userId', 'date'])
+    .index('by_user', ['userId']),
 
   // Pending requests. Removed on accept/decline.
   friend_requests: defineTable({
