@@ -74,6 +74,111 @@ export const get = query({
   },
 });
 
+// ─── patchPrefs ─────────────────────────────────────────────────────────────
+// Lightweight partial update — only patches the fields that are provided.
+// Used by the settings screen so we don't have to re-send the full payload.
+
+export const patchPrefs = mutation({
+  args: {
+    waterGoalMl: v.optional(v.number()),
+    weightKg: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new ConvexError('Unauthenticated');
+    const userId = identity.subject;
+
+    const existing = await ctx.db
+      .query('user_preferences')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .first();
+    if (!existing) throw new ConvexError('No preferences found');
+
+    const patch: Record<string, unknown> = {};
+    if (args.waterGoalMl !== undefined) patch.waterGoalMl = args.waterGoalMl;
+    if (args.weightKg !== undefined) patch.weightKg = args.weightKg;
+    if (Object.keys(patch).length > 0) await ctx.db.patch(existing._id, patch);
+  },
+});
+
+// ─── changeChallenge ────────────────────────────────────────────────────────
+// Switches the user to a new challenge, resetting the start date to today.
+// Historical daily_logs are kept intact — they just fall outside the new window.
+
+export const changeChallenge = mutation({
+  args: {
+    challenge: v.string(),
+    challengeLength: v.number(),
+    challengeStartDate: v.string(), // YYYY-MM-DD (user's local today)
+    customHabits: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new ConvexError('Unauthenticated');
+    const userId = identity.subject;
+
+    const existing = await ctx.db
+      .query('user_preferences')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .first();
+    if (!existing) throw new ConvexError('No preferences found');
+
+    // Archive the current challenge run before switching.
+    if (existing.challengeStartDate) {
+      const endedAt = args.challengeStartDate; // today (user-local)
+      const daysPassed = Math.floor(
+        (new Date(endedAt).getTime() - new Date(existing.challengeStartDate).getTime()) / 86400000,
+      );
+      const status = daysPassed >= existing.challengeLength ? 'completed' : 'abandoned';
+
+      // Count daily_log entries within the old window.
+      const allLogs = await ctx.db
+        .query('daily_logs')
+        .withIndex('by_user', (q) => q.eq('userId', userId))
+        .collect();
+      const daysLogged = allLogs.filter(
+        (l) => l.date >= existing.challengeStartDate && l.date < endedAt,
+      ).length;
+
+      await ctx.db.insert('challenge_history', {
+        userId,
+        challenge: existing.challenge,
+        challengeLength: existing.challengeLength,
+        challengeStartDate: existing.challengeStartDate,
+        endedAt,
+        daysLogged,
+        status,
+      });
+    }
+
+    await ctx.db.patch(existing._id, {
+      challenge: args.challenge,
+      challengeLength: args.challengeLength,
+      challengeStartDate: args.challengeStartDate,
+      customHabits: args.customHabits,
+    });
+  },
+});
+
+// ─── getHistory ─────────────────────────────────────────────────────────────
+// Returns all past challenge runs for the current user, newest first.
+
+export const getHistory = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+    const userId = identity.subject;
+
+    const rows = await ctx.db
+      .query('challenge_history')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .collect();
+
+    return rows.sort((a, b) => b.challengeStartDate.localeCompare(a.challengeStartDate));
+  },
+});
+
 // ─── deleteByUserId (internal) ─────────────────────────────────────────────
 // Cascading delete for the Better Auth user-delete flow. Called from the
 // `beforeDelete` hook in convex/betterAuth/auth.ts.
@@ -117,6 +222,13 @@ export const deleteByUserId = internalMutation({
         .first();
       if (reverse) await ctx.db.delete(reverse._id);
     }
+
+    // challenge_history
+    const history = await ctx.db
+      .query('challenge_history')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .collect();
+    for (const h of history) await ctx.db.delete(h._id);
 
     // friend_requests — both directions
     const outgoing = await ctx.db

@@ -102,6 +102,18 @@ export default defineSchema({
     .index('by_user_date', ['userId', 'date'])
     .index('by_user', ['userId']),
 
+  // One row per challenge run the user has completed or abandoned.
+  // Written when the user switches to a new challenge.
+  challenge_history: defineTable({
+    userId: v.string(),
+    challenge: v.string(),          // ChallengeId
+    challengeLength: v.number(),    // intended length in days
+    challengeStartDate: v.string(), // YYYY-MM-DD
+    endedAt: v.string(),            // YYYY-MM-DD (day they switched away)
+    daysLogged: v.number(),         // daily_logs entries within the window
+    status: v.union(v.literal('completed'), v.literal('abandoned')),
+  }).index('by_user', ['userId']),
+
   // Pending requests. Removed on accept/decline.
   friend_requests: defineTable({
     fromUserId: v.string(),
