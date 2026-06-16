@@ -37,7 +37,9 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
       },
       apple: {
         clientId: process.env.APPLE_CLIENT_ID as string,
-        clientSecret: process.env.APPLE_CLIENT_SECRET as string,
+        // Native iOS flow (expo-apple-authentication) uses idToken verification
+        // via Apple's public keys — no client secret needed.
+        clientSecret: '',
       },
     },
     user: {
@@ -59,7 +61,7 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
       },
     },
     trustedOrigins: [
-      'habittracker://',
+      'hardpact://',
       'exp://',
       'exp://*',
     ],
