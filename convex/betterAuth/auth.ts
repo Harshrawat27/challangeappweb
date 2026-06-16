@@ -55,7 +55,7 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
           // delete-user route), so runMutation is available at runtime.
           await (ctx as GenericActionCtx<DataModel>).runMutation(
             internal.userPreferences.deleteByUserId,
-            { userId: user.id },
+            { userId: user.id }
           );
         },
       },
@@ -64,6 +64,7 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
       'hardpact://',
       'exp://',
       'exp://*',
+      'https://www.hardpact.com',
     ],
     plugins: [expo(), convex({ authConfig })],
   } satisfies BetterAuthOptions;
