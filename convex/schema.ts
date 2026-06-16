@@ -31,6 +31,14 @@ export default defineSchema({
     weightKg: v.optional(v.number()),    // used to pre-calculate water goal
     waterGoalMl: v.optional(v.number()), // daily water target in ml (default 2500)
 
+    // Subscription — mirrored from RevenueCat via webhook. Source of truth is RC.
+    subscriptionStatus: v.optional(v.union(
+      v.literal('weekly'),
+      v.literal('monthly'),
+      v.literal('yearly'),
+      v.literal('expired'),
+    )),
+
     // Meta
     onboardingCompletedAt: v.string(),   // ISO timestamp
   }).index('by_user', ['userId']),

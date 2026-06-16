@@ -179,6 +179,46 @@ export const getHistory = query({
   },
 });
 
+// ─── subscriptionStatus ─────────────────────────────────────────────────────
+
+const SUBSCRIPTION_STATUS = v.union(
+  v.literal('weekly'),
+  v.literal('monthly'),
+  v.literal('yearly'),
+  v.literal('expired'),
+);
+
+// Called by the RevenueCat webhook (server → server). The webhook's app_user_id
+// is the BetterAuth userId we set via Purchases.logIn(userId) on the client.
+export const updateSubscriptionStatus = internalMutation({
+  args: { userId: v.string(), status: SUBSCRIPTION_STATUS },
+  handler: async (ctx, { userId, status }) => {
+    const existing = await ctx.db
+      .query('user_preferences')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .first();
+    if (!existing) return; // user hasn't finished onboarding yet — webhook may arrive first
+    await ctx.db.patch(existing._id, { subscriptionStatus: status });
+  },
+});
+
+// Called by the mobile app immediately after a purchase so the DB stays in sync
+// even before the webhook fires. Authenticated — only updates the calling user.
+export const syncSubscriptionStatus = mutation({
+  args: { status: SUBSCRIPTION_STATUS },
+  handler: async (ctx, { status }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new ConvexError('Unauthenticated');
+    const userId = identity.subject;
+    const existing = await ctx.db
+      .query('user_preferences')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .first();
+    if (!existing) return;
+    await ctx.db.patch(existing._id, { subscriptionStatus: status });
+  },
+});
+
 // ─── deleteByUserId (internal) ─────────────────────────────────────────────
 // Cascading delete for the Better Auth user-delete flow. Called from the
 // `beforeDelete` hook in convex/betterAuth/auth.ts.
