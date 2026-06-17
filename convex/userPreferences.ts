@@ -202,11 +202,18 @@ export const updateSubscriptionStatus = internalMutation({
   },
 });
 
+const SUBSCRIPTION_SOURCE = v.optional(v.union(
+  v.literal('direct'),
+  v.literal('restored'),
+  v.literal('transferred'),
+));
+
 // Called by the mobile app immediately after a purchase so the DB stays in sync
 // even before the webhook fires. Authenticated — only updates the calling user.
+// source is optional — when omitted the existing subscriptionSource is preserved.
 export const syncSubscriptionStatus = mutation({
-  args: { status: SUBSCRIPTION_STATUS },
-  handler: async (ctx, { status }) => {
+  args: { status: SUBSCRIPTION_STATUS, source: SUBSCRIPTION_SOURCE },
+  handler: async (ctx, { status, source }) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new ConvexError('Unauthenticated');
     const userId = identity.subject;
@@ -215,7 +222,9 @@ export const syncSubscriptionStatus = mutation({
       .withIndex('by_user', (q) => q.eq('userId', userId))
       .first();
     if (!existing) return;
-    await ctx.db.patch(existing._id, { subscriptionStatus: status });
+    const patch: Record<string, unknown> = { subscriptionStatus: status };
+    if (source !== undefined) patch.subscriptionSource = source;
+    await ctx.db.patch(existing._id, patch);
   },
 });
 

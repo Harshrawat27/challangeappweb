@@ -38,6 +38,15 @@ export default defineSchema({
       v.literal('yearly'),
       v.literal('expired'),
     )),
+    // How the subscription was acquired on this account.
+    // 'direct'      → purchased on this account
+    // 'restored'    → restored by the same Apple ID on a new device
+    // 'transferred' → restored by a different account (shared/transferred purchase)
+    subscriptionSource: v.optional(v.union(
+      v.literal('direct'),
+      v.literal('restored'),
+      v.literal('transferred'),
+    )),
 
     // Meta
     onboardingCompletedAt: v.string(),   // ISO timestamp
