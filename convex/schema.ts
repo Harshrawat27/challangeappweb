@@ -131,6 +131,26 @@ export default defineSchema({
     status: v.union(v.literal('completed'), v.literal('abandoned')),
   }).index('by_user', ['userId']),
 
+  // Custom reminders created by the user after onboarding.
+  reminders: defineTable({
+    userId: v.string(),
+    label: v.string(),
+    type: v.union(
+      v.literal('daily'),        // once a day
+      v.literal('twice_daily'),  // two fixed times
+      v.literal('thrice_daily'), // three fixed times
+      v.literal('every_x_hours'),// interval between start and end
+      v.literal('weekly'),       // specific days of week
+    ),
+    times: v.array(v.string()),            // HH:MM strings
+    intervalHours: v.optional(v.number()), // 1|2|3|4|6|8|12
+    intervalStart: v.optional(v.string()), // HH:MM
+    intervalEnd: v.optional(v.string()),   // HH:MM
+    daysOfWeek: v.optional(v.array(v.number())), // 0=Sun..6=Sat
+    isActive: v.boolean(),
+    createdAt: v.string(),
+  }).index('by_user', ['userId']),
+
   // Pending requests. Removed on accept/decline.
   friend_requests: defineTable({
     fromUserId: v.string(),
