@@ -149,6 +149,10 @@ async function fetchFriendCard(
     currentDay = Math.max(1, Math.floor((todayMs - startMs) / 86_400_000) + 1);
   }
 
+  const profilePictureUrl = prefs?.profilePictureId
+    ? await ctx.storage.getUrl(prefs.profilePictureId)
+    : null;
+
   return {
     userId: friendUserId,
     username: username?.username ?? null,
@@ -159,6 +163,7 @@ async function fetchFriendCard(
     challengeStartDate: prefs?.challengeStartDate ?? null,
     customHabits: prefs?.customHabits ?? [],
     currentDay,
+    profilePictureUrl,
     todayCompleted: todayLog ? Object.keys(todayLog.completions).length : 0,
     todayExpected: todayLog?.allTaskIds.length ?? 0,
     todayTaskIds: todayLog?.allTaskIds ?? [],
@@ -215,6 +220,10 @@ export const getFriendDetail = query({
       .filter((q) => q.lte(q.field('date'), today))
       .collect();
 
+    const profilePictureUrl = prefs?.profilePictureId
+      ? await ctx.storage.getUrl(prefs.profilePictureId)
+      : null;
+
     return {
       username: username?.username ?? null,
       displayName: username?.displayName ?? prefs?.name ?? 'Friend',
@@ -222,6 +231,7 @@ export const getFriendDetail = query({
       challengeLength: prefs?.challengeLength ?? null,
       challengeStartDate: prefs?.challengeStartDate ?? null,
       customHabits: prefs?.customHabits ?? [],
+      profilePictureUrl,
       logs,
     };
   },

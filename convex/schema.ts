@@ -48,6 +48,9 @@ export default defineSchema({
       v.literal('transferred'),
     )),
 
+    // Profile picture — Convex storage ID
+    profilePictureId: v.optional(v.id('_storage')),
+
     // Meta
     onboardingCompletedAt: v.string(),   // ISO timestamp
   }).index('by_user', ['userId']),

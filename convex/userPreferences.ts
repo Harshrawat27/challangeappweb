@@ -74,6 +74,46 @@ export const get = query({
   },
 });
 
+// ─── generateUploadUrl ──────────────────────────────────────────────────────
+// Returns a short-lived URL the client POSTs an image to for profile pictures.
+
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new ConvexError('Unauthenticated');
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+// ─── saveProfilePicture ─────────────────────────────────────────────────────
+// Stores the Convex storage ID after the client uploads the image blob.
+
+export const saveProfilePicture = mutation({
+  args: { storageId: v.id('_storage') },
+  handler: async (ctx, { storageId }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new ConvexError('Unauthenticated');
+    const userId = identity.subject;
+    const existing = await ctx.db
+      .query('user_preferences')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .first();
+    if (!existing) throw new ConvexError('No preferences found');
+    await ctx.db.patch(existing._id, { profilePictureId: storageId });
+  },
+});
+
+// ─── getProfilePictureUrl ───────────────────────────────────────────────────
+// Resolves a storage ID to its public URL. Used by the profile screen.
+
+export const getProfilePictureUrl = query({
+  args: { storageId: v.id('_storage') },
+  handler: async (ctx, { storageId }) => {
+    return await ctx.storage.getUrl(storageId);
+  },
+});
+
 // ─── patchPrefs ─────────────────────────────────────────────────────────────
 // Lightweight partial update — only patches the fields that are provided.
 // Used by the settings screen so we don't have to re-send the full payload.
