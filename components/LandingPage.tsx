@@ -714,8 +714,12 @@ export default function LandingPage({ authed }: { authed: boolean }) {
             © {new Date().getFullYear()} Hardpact. All rights reserved.
           </p>
           <div style={{ display: 'flex', gap: 24 }}>
-            {['Privacy', 'Terms', 'Support'].map(label => (
-              <a key={label} href={`/${label.toLowerCase()}`} style={{
+            {[
+              { label: 'Privacy', href: '/privacy' },
+              { label: 'Terms', href: '/terms' },
+              { label: 'Subscription', href: '/subscription' },
+            ].map(({ label, href }) => (
+              <a key={label} href={href} style={{
                 fontFamily: 'var(--font-manrope)', fontWeight: 400,
                 fontSize: 13, color: 'var(--dim)', textDecoration: 'none',
                 transition: 'color 0.2s ease',
