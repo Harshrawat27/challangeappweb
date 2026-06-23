@@ -222,7 +222,6 @@ export default function SupportPage() {
           }}
           onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--foreground)')}
           onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'var(--card)')}
-          onMouseEnterCapture={undefined}
         >
           <div style={{
             width: 40, height: 40, borderRadius: 10,
