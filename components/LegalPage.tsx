@@ -200,6 +200,7 @@ export default function LegalPage({ label, title, subtitle, lastUpdated, section
               { label: 'Privacy', href: '/privacy' },
               { label: 'Terms', href: '/terms' },
               { label: 'Subscription', href: '/subscription' },
+              { label: 'Support', href: '/support' },
             ].map(({ label, href }) => (
               <a key={label} href={href} style={{
                 fontFamily: 'var(--font-manrope)', fontWeight: 400,

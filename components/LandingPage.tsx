@@ -718,6 +718,7 @@ export default function LandingPage({ authed }: { authed: boolean }) {
               { label: 'Privacy', href: '/privacy' },
               { label: 'Terms', href: '/terms' },
               { label: 'Subscription', href: '/subscription' },
+              { label: 'Support', href: '/support' },
             ].map(({ label, href }) => (
               <a key={label} href={href} style={{
                 fontFamily: 'var(--font-manrope)', fontWeight: 400,
