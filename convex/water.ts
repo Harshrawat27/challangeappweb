@@ -54,9 +54,9 @@ export const logWater = mutation({
         .query('daily_logs')
         .withIndex('by_user_date', (q) => q.eq('userId', userId).eq('date', date))
         .first();
-      if (log && !log.completions['water']) {
+      if (log && !(log.completions['water']?.length)) {
         await ctx.db.patch(log._id, {
-          completions: { ...log.completions, water: new Date().toISOString() },
+          completions: { ...log.completions, water: [new Date().toISOString()] },
         });
       }
     }
