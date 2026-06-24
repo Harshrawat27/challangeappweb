@@ -2,18 +2,21 @@ import { ConvexError, v } from 'convex/values';
 
 import { mutation, query } from './_generated/server';
 
-// ─── toggleTask ─────────────────────────────────────────────────────────────
-// Idempotent toggle of a single task on a given date.
-// - The client passes its OWN local-date string so timezone math stays correct.
-// - Only TODAY is allowed to be mutated. Server enforces this so past days
-//   can't be edited even if a client tries.
+// ─── tapTask ─────────────────────────────────────────────────────────────────
+// Adds or removes one tap for a task on a given date.
+// action='add'    → push a timestamp into completions[taskId]
+// action='remove' → pop the last timestamp from completions[taskId]
+// Only TODAY is allowed to be mutated. Server enforces this so past days
+// can't be edited even if a client tries.
 
-export const toggleTask = mutation({
+export const tapTask = mutation({
   args: {
-    date: v.string(),                  // YYYY-MM-DD (must equal user-local today)
+    date: v.string(),                                        // YYYY-MM-DD (must equal user-local today)
     taskId: v.string(),
-    allTaskIds: v.array(v.string()),   // snapshot of the full task list for this day
-    todayLocal: v.string(),            // YYYY-MM-DD — what the client thinks "today" is
+    allTaskIds: v.array(v.string()),                         // snapshot of the full task list
+    taskCounts: v.optional(v.record(v.string(), v.number())), // required taps per task
+    todayLocal: v.string(),                                  // YYYY-MM-DD — what the client thinks "today" is
+    action: v.union(v.literal('add'), v.literal('remove')), // add one tap or remove last tap
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -21,11 +24,9 @@ export const toggleTask = mutation({
     const userId = identity.subject;
 
     if (args.date !== args.todayLocal) {
-      // Past or future date — disallowed. The client should never trigger this.
-      throw new ConvexError('Only today can be toggled.');
+      throw new ConvexError('Only today can be mutated.');
     }
 
-    // Pull user prefs for the challenge start date so we can stamp challengeDay.
     const prefs = await ctx.db
       .query('user_preferences')
       .withIndex('by_user', (q) => q.eq('userId', userId))
@@ -50,25 +51,32 @@ export const toggleTask = mutation({
     const now = new Date().toISOString();
 
     if (!existing) {
+      const completions: Record<string, string[]> = {};
+      if (args.action === 'add') completions[args.taskId] = [now];
       return await ctx.db.insert('daily_logs', {
         userId,
         date: args.date,
         challengeDay,
         allTaskIds: args.allTaskIds,
-        completions: { [args.taskId]: now },
+        taskCounts: args.taskCounts,
+        completions,
       });
     }
 
-    // Toggle the task in the existing completions map.
-    const nextCompletions: Record<string, string> = { ...existing.completions };
-    if (args.taskId in nextCompletions) {
-      delete nextCompletions[args.taskId];
+    const nextCompletions: Record<string, string[]> = { ...existing.completions };
+    const current = nextCompletions[args.taskId] ?? [];
+
+    if (args.action === 'add') {
+      nextCompletions[args.taskId] = [...current, now];
     } else {
-      nextCompletions[args.taskId] = now;
+      if (current.length > 0) {
+        nextCompletions[args.taskId] = current.slice(0, -1);
+      }
     }
 
     await ctx.db.patch(existing._id, {
       allTaskIds: args.allTaskIds,
+      taskCounts: args.taskCounts,
       completions: nextCompletions,
     });
     return existing._id;

@@ -200,6 +200,50 @@ export const changeChallenge = mutation({
   },
 });
 
+// ─── addCustomHabit ─────────────────────────────────────────────────────────
+// Appends one encoded custom habit string to the user's customHabits array.
+// Called when the user adds a habit mid-challenge.
+
+export const addCustomHabit = mutation({
+  args: { encoded: v.string() },
+  handler: async (ctx, { encoded }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new ConvexError('Unauthenticated');
+    const userId = identity.subject;
+
+    const existing = await ctx.db
+      .query('user_preferences')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .first();
+    if (!existing) throw new ConvexError('No preferences found');
+
+    await ctx.db.patch(existing._id, {
+      customHabits: [...existing.customHabits, encoded],
+    });
+  },
+});
+
+// ─── updateCustomHabits ──────────────────────────────────────────────────────
+// Replaces the entire customHabits array. Used for soft-delete (endDate stamped
+// on an entry) and reordering.
+
+export const updateCustomHabits = mutation({
+  args: { customHabits: v.array(v.string()) },
+  handler: async (ctx, { customHabits }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new ConvexError('Unauthenticated');
+    const userId = identity.subject;
+
+    const existing = await ctx.db
+      .query('user_preferences')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .first();
+    if (!existing) throw new ConvexError('No preferences found');
+
+    await ctx.db.patch(existing._id, { customHabits });
+  },
+});
+
 // ─── getHistory ─────────────────────────────────────────────────────────────
 // Returns all past challenge runs for the current user, newest first.
 

@@ -59,11 +59,12 @@ export default defineSchema({
   // and when. Past rows are immutable from a UI standpoint — only today's row
   // is ever mutated.
   daily_logs: defineTable({
-    userId: v.string(),                                   // Better Auth subject
-    date: v.string(),                                     // YYYY-MM-DD (user-local)
-    challengeDay: v.number(),                             // day 1..N of the user's challenge
-    allTaskIds: v.array(v.string()),                      // snapshot of the day's task list
-    completions: v.record(v.string(), v.string()),        // taskId → ISO timestamp of latest check
+    userId: v.string(),                                           // Better Auth subject
+    date: v.string(),                                            // YYYY-MM-DD (user-local)
+    challengeDay: v.number(),                                    // day 1..N of the user's challenge
+    allTaskIds: v.array(v.string()),                             // snapshot of the day's task list
+    taskCounts: v.optional(v.record(v.string(), v.number())),   // taskId → required taps (1 = toggle)
+    completions: v.record(v.string(), v.array(v.string())),     // taskId → array of tap timestamps
   })
     .index('by_user_date', ['userId', 'date'])
     .index('by_user', ['userId']),
