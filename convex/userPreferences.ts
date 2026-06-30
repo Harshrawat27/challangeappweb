@@ -374,5 +374,33 @@ export const deleteByUserId = internalMutation({
       .withIndex('by_to', (q) => q.eq('toUserId', userId))
       .collect();
     for (const r of incoming) await ctx.db.delete(r._id);
+
+    // meals
+    const meals = await ctx.db
+      .query('meals')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .collect();
+    for (const m of meals) await ctx.db.delete(m._id);
+
+    // day_notes
+    const notes = await ctx.db
+      .query('day_notes')
+      .withIndex('by_user_date', (q) => q.eq('userId', userId))
+      .collect();
+    for (const n of notes) await ctx.db.delete(n._id);
+
+    // water_logs
+    const waterLogs = await ctx.db
+      .query('water_logs')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .collect();
+    for (const w of waterLogs) await ctx.db.delete(w._id);
+
+    // reminders
+    const reminders = await ctx.db
+      .query('reminders')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .collect();
+    for (const r of reminders) await ctx.db.delete(r._id);
   },
 });
