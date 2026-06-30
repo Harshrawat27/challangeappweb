@@ -52,7 +52,8 @@ export default defineSchema({
     profilePictureId: v.optional(v.id('_storage')),
 
     // Meta
-    onboardingCompletedAt: v.string(),   // ISO timestamp
+    onboardingCompleted: v.optional(v.boolean()),  // false = draft saved, true = paid & done, absent = legacy completed
+    onboardingCompletedAt: v.optional(v.string()), // ISO timestamp, only set on true completion
   }).index('by_user', ['userId']),
 
   // One row per (user, date). Records which tasks were checked off that day

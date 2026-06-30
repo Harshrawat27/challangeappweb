@@ -26,6 +26,7 @@ export const save = mutation({
     reminderTimes,
     weightKg: v.optional(v.number()),
     waterGoalMl: v.optional(v.number()),
+    onboardingCompleted: v.optional(v.boolean()), // false = draft, true = paid & done
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -37,14 +38,22 @@ export const save = mutation({
       .withIndex('by_user', (q) => q.eq('userId', userId))
       .first();
 
-    const onboardingCompletedAt = new Date().toISOString();
+    const isCompleting = args.onboardingCompleted === true;
+    const onboardingCompletedAt = isCompleting ? new Date().toISOString() : undefined;
 
     if (existing) {
+      // Never downgrade onboardingCompleted from true → false
+      const onboardingCompleted =
+        existing.onboardingCompleted === true ? true : args.onboardingCompleted;
       await ctx.db.patch(existing._id, {
         ...args,
-        // Don't overwrite the original start date on re-save
-        challengeStartDate: existing.challengeStartDate || args.challengeStartDate,
-        onboardingCompletedAt,
+        onboardingCompleted,
+        // Don't overwrite the original start date on re-save (only override on completion)
+        challengeStartDate:
+          isCompleting
+            ? args.challengeStartDate
+            : existing.challengeStartDate || args.challengeStartDate,
+        ...(onboardingCompletedAt ? { onboardingCompletedAt } : {}),
       });
       return existing._id;
     }
@@ -52,7 +61,34 @@ export const save = mutation({
     return await ctx.db.insert('user_preferences', {
       userId,
       ...args,
-      onboardingCompletedAt,
+      ...(onboardingCompletedAt ? { onboardingCompletedAt } : {}),
+    });
+  },
+});
+
+// ─── markOnboardingComplete ──────────────────────────────────────────────────
+// Called after successful payment. Sets challengeStartDate to today (the actual
+// start of the challenge), marks onboardingCompleted: true, and records the
+// completion timestamp. Separate from `save` so the paywall can call it without
+// needing to re-send the full onboarding payload after an app kill.
+
+export const markOnboardingComplete = mutation({
+  args: { challengeStartDate: v.string() }, // YYYY-MM-DD user-local today
+  handler: async (ctx, { challengeStartDate }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new ConvexError('Unauthenticated');
+    const userId = identity.subject;
+
+    const existing = await ctx.db
+      .query('user_preferences')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .first();
+    if (!existing) return; // no draft to promote
+
+    await ctx.db.patch(existing._id, {
+      onboardingCompleted: true,
+      challengeStartDate,
+      onboardingCompletedAt: new Date().toISOString(),
     });
   },
 });
